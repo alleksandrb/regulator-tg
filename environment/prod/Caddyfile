@@ -1,0 +1,10 @@
+:443 {
+    root * /app/public
+    php_server
+    tls /etc/certs/cert.pem /etc/certs/key.pem
+}
+
+:80 {
+    root * /app/public
+    php_server
+}

@@ -7,45 +7,59 @@ volumes:
   dbdata:
 
 services:
-    fpm: &app-container
-        build:
-            context: ./environment/prod
-            dockerfile: Dockerfile
-        container_name: ${APP_NAME}-fpm
-        stop_grace_period: 10s
-        networks:
-            - default
-        volumes:
-            - &data-app ./:/app
-            - ./environment/prod/fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf
-            - ./environment/prod/fpm/php.ini:/usr/local/etc/php/php.ini
-        environment:
-            DB_HOST: postgres
-            DB_DATABASE: &db-name ${DB_DATABASE}
-            DB_USERNAME: &db-username ${DB_USERNAME}
-            DB_PASSWORD: &db-password ${DB_PASSWORD}
-            APP_ENV: ${APP_ENV}
-            HOME: /app
-        working_dir: /app
-        depends_on:
-            - postgres
+    # fpm: &app-container
+    #     build:
+    #         context: ./environment/prod
+    #         dockerfile: Dockerfile
+    #     container_name: ${APP_NAME}-fpm
+    #     stop_grace_period: 10s
+    #     networks:
+    #         - default
+    #     volumes:
+    #         - &data-app ./:/app
+    #         - ./environment/prod/fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    #         - ./environment/prod/fpm/php.ini:/usr/local/etc/php/php.ini
+    #     environment:
+    #         DB_HOST: postgres
+    #         DB_DATABASE: &db-name ${DB_DATABASE}
+    #         DB_USERNAME: &db-username ${DB_USERNAME}
+    #         DB_PASSWORD: &db-password ${DB_PASSWORD}
+    #         APP_ENV: ${APP_ENV}
+    #         HOME: /app
+    #     working_dir: /app
+    #     depends_on:
+    #         - postgres
 
-    nginx:
-        image: nginx:1.27-alpine
-        container_name: ${APP_NAME}-nginx
-        stop_grace_period: 10s
+    # nginx:
+    #     image: nginx:1.27-alpine
+    #     container_name: ${APP_NAME}-nginx
+    #     stop_grace_period: 10s
+    #     ports:
+    #         - 80:80
+    #     restart: always
+    #     volumes:
+    #         - *data-app
+    #         - ./environment/prod/nginx/nginx.conf:/etc/nginx/nginx.conf
+    #         - ./environment/prod/nginx/site.conf:/etc/nginx/site.conf
+    #     networks:
+    #         - default
+    #     depends_on:
+    #         - fpm
+    app:
+        image: dunglas/frankenphp:latest
+        container_name: ${APP_NAME}-app
         ports:
-            - 80:80
-        restart: always
+        - "80:80"
+        - "443:443"
         volumes:
-            - *data-app
-            - ./environment/prod/nginx/nginx.conf:/etc/nginx/nginx.conf
-            - ./environment/prod/nginx/site.conf:/etc/nginx/site.conf
+        - ./:/app
+        - ./environment/prod/Caddyfile:/etc/caddy/Caddyfile
+        - ./environment/prod/cert.pem:/etc/certs/cert.pem
+        - ./environment/prod/key.pem:/etc/certs/key.pem
+        restart: unless-stopped
         networks:
             - default
-        depends_on:
-            - fpm
-    
+
     postgres:
         image: postgres:17.2-alpine
         container_name: ${APP_NAME}-db
@@ -56,9 +70,9 @@ services:
             restart_policy:
                 condition: on-failure
         environment:
-            POSTGRES_DB: *db-name
-            POSTGRES_USER: *db-username
-            POSTGRES_PASSWORD: *db-password
+            POSTGRES_DB: ${DB_DATABASE}
+            POSTGRES_USER: ${DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
         restart: always
         volumes:
             - dbdata:/var/lib/postgresql/data
@@ -70,5 +84,3 @@ services:
         restart: always
         networks:
             - default
-        depends_on:
-            - fpm
