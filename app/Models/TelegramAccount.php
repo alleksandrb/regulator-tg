@@ -31,7 +31,21 @@ class TelegramAccount extends Model
 
     public function getJsonData(): array
     {
-        return $this->json_data;
+        $jsonData = $this->json_data;
+        
+        // If the cast failed and we have a string, decode it manually
+        if (is_string($jsonData)) {
+            $decoded = json_decode($jsonData, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        
+        // If it's already an array (cast worked), return it
+        if (is_array($jsonData)) {
+            return $jsonData;
+        }
+        
+        // Fallback to empty array if null or other type
+        return [];
     }
 
     /**
