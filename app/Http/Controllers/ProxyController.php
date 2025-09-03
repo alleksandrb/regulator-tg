@@ -7,12 +7,12 @@ namespace App\Http\Controllers;
 use App\Models\Proxy;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\CreateProxyRequest;
-use App\Repositories\ProxyRepositories;
+use App\Services\ProxyService;
 
 class ProxyController extends Controller
 {
     public function __construct(
-        private ProxyRepositories $proxyRepository
+        private ProxyService $proxyService
     ) {}
 
     /**
@@ -25,18 +25,21 @@ class ProxyController extends Controller
         $proxyFile = $request->file('proxy_file');
         $fileContent = $proxyFile->get();
         
-        // TODO: Реализовать парсинг файла с прокси
-        // Пока что заглушка
-        $proxiesAdded = 0;
-        
-        // Заглушка - симулируем добавление прокси
-        $proxiesAdded = rand(1, 10);
+        try {
+            // Используем сервис для массовой вставки прокси
+            $proxiesAdded = $this->proxyService->createProxyFromFile($fileContent);
 
-        return response()->json([
-            'success' => true,
-            'message' => "Успешно добавлено прокси: {$proxiesAdded}",
-            'proxies_added' => $proxiesAdded
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => "Успешно добавлено прокси: {$proxiesAdded}",
+                'proxies_added' => $proxiesAdded
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при обработке файла: ' . $e->getMessage()
+            ], 422);
+        }
     }
 
     /**
@@ -58,7 +61,7 @@ class ProxyController extends Controller
         ])
         ->withCount('telegramAccounts')
         ->orderBy('created_at', 'desc')
-        ->paginate(20);
+        ->paginate(10);
 
         return response()->json([
             'success' => true,

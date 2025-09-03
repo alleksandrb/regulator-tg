@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class TelegramAccountRepository
 {
     public function __construct(
-        private ProxyRepositories $proxyRepositories
+        private ProxyRepository $proxyRepository
     ) {}
 
     /**
@@ -39,7 +39,7 @@ class TelegramAccountRepository
 
     public function createAccount(string $session, string $jsonData): TelegramAccount
     {
-        $proxy = $this->proxyRepositories->getProxyWithMinUsage();
+        $proxy = $this->proxyRepository->getProxyWithMinUsage();
 
         return TelegramAccount::query()->create([
             'session_data' => $session,

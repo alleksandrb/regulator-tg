@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Proxy extends Model
 {
     protected $fillable = [
+        'name',
         'ip',
         'port',
         'protocol',
         'login',
         'password',
+        'refresh_link',
         'usage_count',
         'last_used_at',
         'is_active',

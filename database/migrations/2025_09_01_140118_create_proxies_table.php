@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('ip');
             $table->integer('port');
-            $table->string('protocol');
+            $table->string('protocol')->nullable();
             $table->string('login');
             $table->string('password');
             $table->text('refresh_link');
@@ -29,6 +29,7 @@ return new class extends Migration
             $table->timestamps();
             
             $table->index(['is_active', 'usage_count']);
+            $table->unique(['ip', 'port', 'login', 'password'], 'unique_proxy_endpoint');
         });
     }
 
