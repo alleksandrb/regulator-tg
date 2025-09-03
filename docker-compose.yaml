@@ -4,7 +4,7 @@ networks:
     default:
 
 volumes:
-  dbdata:
+    dbdata:
 
 services:
     fpm: &app-container
@@ -70,3 +70,13 @@ services:
         restart: always
         networks:
             - default
+
+    frontend:
+        image: node:latest⁠
+        container_name: ${APP_NAME}-frontend
+        working_dir: /app
+        volumes:
+            - ./:/app
+        command: sh -c "npm install && npm run build"
+        depends_on:
+            - fpm
