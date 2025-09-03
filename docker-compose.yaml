@@ -72,7 +72,7 @@ services:
             - default
 
     frontend:
-        image: node:latest⁠
+        image: node:24-alpine3.21
         container_name: ${APP_NAME}-frontend
         working_dir: /app
         volumes:
