@@ -63,18 +63,6 @@ services:
         volumes:
             - dbdata:/var/lib/postgresql/data
 
-    cron:
-        <<: *app-container
-        restart: always
-        container_name: ${APP_NAME}-cron
-        stop_grace_period: 10s
-        networks:
-            - default
-        user: root
-        entrypoint: ["crond", "-f", "-l", "2"]
-        depends_on:
-            - fpm
-
     redis:
         image: redis:7.4-alpine
         container_name: ${APP_NAME}-redis
