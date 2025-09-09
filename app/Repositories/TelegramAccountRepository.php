@@ -80,4 +80,32 @@ class TelegramAccountRepository
     {
         return TelegramAccount::query()->byUserId((string)$userId)->first();
     }
+
+    /**
+     * Выбрать множество доступных аккаунтов для задач
+     * Возвращает коллекцию уникальных аккаунтов
+     */
+    public function selectMultipleAvailableAccounts(int $count): \Illuminate\Database\Eloquent\Collection
+    {
+        return DB::transaction(function () use ($count) {
+            // Получаем нужное количество активных аккаунтов с блокировкой
+            $accounts = TelegramAccount::query()
+                ->active()
+                ->orderByUsage()
+                ->lockForUpdate()
+                ->take($count)
+                ->get();
+
+            if ($accounts->isEmpty()) {
+                return $accounts;
+            }
+
+            // Обновляем статистику для всех выбранных аккаунтов
+            $accountIds = $accounts->pluck('id')->toArray();
+            TelegramAccount::whereIn('id', $accountIds)->increment('usage_count');
+            TelegramAccount::whereIn('id', $accountIds)->update(['last_used_at' => now()]);
+
+            return $accounts;
+        });
+    }
 }

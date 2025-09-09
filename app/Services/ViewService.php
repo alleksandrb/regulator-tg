@@ -35,30 +35,34 @@ class ViewService
             throw new \Exception("Запрошено просмотров: {$viewsCount}, доступно аккаунтов: {$availableAccountsCount}");
         }
 
-        // Сохраняем задачу в базу данных
+        // Получаем все необходимые аккаунты одним запросом
+        $accounts = $this->accountRepository->selectMultipleAvailableAccounts($viewsCount);
+        
+        if ($accounts->isEmpty()) {
+            throw new \Exception('Не удалось получить аккаунты для постановки задач в очередь');
+        }
+        
+        $actualAccountsCount = $accounts->count();
+        if ($actualAccountsCount < $viewsCount) {
+            Log::warning("Requested {$viewsCount} accounts, but only {$actualAccountsCount} available", [
+                'telegram_post_url' => $telegramPostUrl,
+                'requested_views' => $viewsCount,
+                'actual_accounts' => $actualAccountsCount
+            ]);
+        }
+
+        // Сохраняем задачу в базу данных с фактическим количеством просмотров
         ViewTask::create([
             'telegram_post_url' => $telegramPostUrl,
-            'views_count' => $viewsCount,
+            'views_count' => $actualAccountsCount, // Сохраняем фактическое количество
             'user_id' => Auth::id(),
         ]);
         
         $successfulTasks = 0;
         $failedTasks = 0;
         
-        for ($i = 0; $i < $viewsCount; $i++) {
-            $account = $this->accountRepository->selectAvailableAccount();
-            
-            if (!$account) {
-                $failedTasks++;
-                Log::warning("No available accounts for view {$i} of {$viewsCount}", [
-                    'telegram_post_url' => $telegramPostUrl,
-                    'requested_views' => $viewsCount,
-                    'successful_tasks' => $successfulTasks,
-                    'failed_tasks' => $failedTasks
-                ]);
-                continue;
-            }
-
+        // Ставим задачи в очередь для каждого полученного аккаунта
+        foreach ($accounts as $account) {
             try {
                 $this->queueService->addViewIncrementTask(
                     $account,
@@ -79,6 +83,7 @@ class ViewService
         Log::info("View tasks processing completed", [
             'telegram_post_url' => $telegramPostUrl,
             'requested_views' => $viewsCount,
+            'actual_accounts_selected' => $actualAccountsCount,
             'successful_tasks' => $successfulTasks,
             'failed_tasks' => $failedTasks,
             'available_accounts_at_start' => $availableAccountsCount
