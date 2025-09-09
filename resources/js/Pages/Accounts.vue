@@ -13,57 +13,56 @@
                 <!-- Форма добавления аккаунта -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Добавить новый аккаунт</h3>
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Добавить аккаунты из папки</h3>
                         
-                        <form @submit.prevent="submitAccount" class="space-y-4" enctype="multipart/form-data">
+                        <form @submit.prevent="submitAccounts" class="space-y-4" enctype="multipart/form-data">
                             <div>
-                                <label for="session_data" class="block text-sm font-medium text-gray-700">
-                                    Session Data файл
+                                <label for="account_files" class="block text-sm font-medium text-gray-700">
+                                    Файлы аккаунтов (папка)
                                 </label>
                                 <input 
                                     type="file"
-                                    id="session_data"
-                                    ref="sessionDataInput"
-                                    @change="handleSessionDataFile"
+                                    id="account_files"
+                                    ref="accountFilesInput"
+                                    @change="handleAccountFiles"
                                     class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                    accept=".session,.txt,.dat"
+                                    accept=".session,.json,.txt,.dat"
+                                    multiple
+                                    webkitdirectory
                                     required
                                 />
                                 <p class="mt-1 text-sm text-gray-500">
-                                    Загрузите файл с session данными Telegram аккаунта
+                                    Выберите папку с файлами аккаунтов. Для каждого аккаунта должны быть файлы с одинаковым именем, но разными расширениями (.session и .json)
                                 </p>
-                                <div v-if="form.session_data" class="mt-2 text-sm text-green-600">
-                                    ✓ Файл выбран: {{ form.session_data.name }} ({{ formatFileSize(form.session_data.size) }})
+                                <div v-if="accountPairs.length > 0" class="mt-3 space-y-2">
+                                    <p class="text-sm font-medium text-green-600">
+                                        ✓ Найдено {{ accountPairs.length }} пар(ы) файлов:
+                                    </p>
+                                    <div class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-3">
+                                        <div v-for="pair in accountPairs" :key="pair.name" class="flex items-center justify-between py-1">
+                                            <span class="text-sm text-gray-700">{{ pair.name }}</span>
+                                            <span class="text-xs text-gray-500">{{ formatFileSize(pair.sessionFile.size + pair.jsonFile.size) }}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div>
-                                <label for="json_data" class="block text-sm font-medium text-gray-700">
-                                    JSON Data файл
-                                </label>
-                                <input 
-                                    type="file"
-                                    id="json_data"
-                                    ref="jsonDataInput"
-                                    @change="handleJsonDataFile"
-                                    class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                    accept=".json,.txt"
-                                    required
-                                />
-                                <p class="mt-1 text-sm text-gray-500">
-                                    Загрузите JSON файл с данными аккаунта (app_id, app_hash, phone и т.д.)
-                                </p>
-                                <div v-if="form.json_data" class="mt-2 text-sm text-green-600">
-                                    ✓ Файл выбран: {{ form.json_data.name }} ({{ formatFileSize(form.json_data.size) }})
+                                <div v-if="invalidFiles.length > 0" class="mt-3">
+                                    <p class="text-sm font-medium text-red-600">
+                                        ⚠ Файлы без пары (будут пропущены):
+                                    </p>
+                                    <div class="max-h-32 overflow-y-auto bg-red-50 rounded-md p-2 mt-1">
+                                        <div v-for="file in invalidFiles" :key="file.name" class="text-xs text-red-700">
+                                            {{ file.name }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
                             <button 
                                 type="submit" 
-                                :disabled="loading"
+                                :disabled="loading || accountPairs.length === 0"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
                             >
-                                {{ loading ? 'Добавление...' : 'Добавить аккаунт' }}
+                                {{ loading ? 'Добавление...' : (accountPairs.length > 0 ? `Добавить ${accountPairs.length} аккаунт(ов)` : 'Выберите файлы') }}
                             </button>
                         </form>
 
@@ -96,6 +95,7 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Прокси</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Использований</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Последнее использование</th>
@@ -106,6 +106,9 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <tr v-for="account in accounts" :key="account.id">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ account.id }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                                            {{ account.user_id || '-' }}
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {{ account.proxy_id || '-' }}
                                         </td>
@@ -133,7 +136,7 @@
                                         </td>
                                     </tr>
                                     <tr v-if="accounts.length === 0">
-                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                                             Аккаунты не найдены
                                         </td>
                                     </tr>
@@ -154,10 +157,11 @@ import { ref, onMounted } from 'vue';
 import axios from 'axios';
 
 const form = ref({
-    session_data: null,
-    json_data: null
+    files: []
 });
 const accounts = ref([]);
+const accountPairs = ref([]);
+const invalidFiles = ref([]);
 const loading = ref(false);
 const message = ref('');
 const messageType = ref('');
@@ -170,18 +174,50 @@ const showMessage = (msg, type) => {
     }, 5000);
 };
 
-const handleSessionDataFile = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        form.value.session_data = file;
-    }
-};
-
-const handleJsonDataFile = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        form.value.json_data = file;
-    }
+const handleAccountFiles = (event) => {
+    const files = Array.from(event.target.files);
+    form.value.files = files;
+    
+    // Группируем файлы по имени (без расширения)
+    const fileGroups = {};
+    const orphanFiles = [];
+    
+    files.forEach(file => {
+        const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
+        const extension = file.name.substring(file.name.lastIndexOf('.'));
+        
+        if (!fileGroups[nameWithoutExt]) {
+            fileGroups[nameWithoutExt] = {};
+        }
+        
+        if (extension === '.session') {
+            fileGroups[nameWithoutExt].session = file;
+        } else if (extension === '.json') {
+            fileGroups[nameWithoutExt].json = file;
+        } else {
+            orphanFiles.push(file);
+        }
+    });
+    
+    // Находим полные пары (session + json)
+    const pairs = [];
+    const incomplete = [];
+    
+    Object.entries(fileGroups).forEach(([name, group]) => {
+        if (group.session && group.json) {
+            pairs.push({
+                name: name,
+                sessionFile: group.session,
+                jsonFile: group.json
+            });
+        } else {
+            if (group.session) incomplete.push(group.session);
+            if (group.json) incomplete.push(group.json);
+        }
+    });
+    
+    accountPairs.value = pairs;
+    invalidFiles.value = [...incomplete, ...orphanFiles];
 };
 
 const formatFileSize = (bytes) => {
@@ -192,36 +228,50 @@ const formatFileSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const submitAccount = async () => {
+const submitAccounts = async () => {
     loading.value = true;
     
     try {
-        if (!form.value.session_data || !form.value.json_data) {
-            showMessage('Пожалуйста, выберите оба файла', 'error');
+        if (accountPairs.value.length === 0) {
+            showMessage('Пожалуйста, выберите папку с файлами аккаунтов', 'error');
             return;
         }
         
         const formData = new FormData();
-        formData.append('session_data', form.value.session_data);
-        formData.append('json_data', form.value.json_data);
         
-        const response = await axios.post('/accounts', formData, {
+        // Добавляем каждую пару файлов
+        accountPairs.value.forEach((pair, index) => {
+            formData.append(`accounts[${index}][session_data]`, pair.sessionFile);
+            formData.append(`accounts[${index}][json_data]`, pair.jsonFile);
+            formData.append(`accounts[${index}][name]`, pair.name);
+        });
+        
+        const response = await axios.post('/accounts/bulk', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
         });
         
         if (response.data.success) {
-            showMessage(response.data.message, 'success');
-            // Очищаем форму
-            form.value.session_data = null;
-            form.value.json_data = null;
-            // Сбрасываем input файлы
-            if (document.getElementById('session_data')) {
-                document.getElementById('session_data').value = '';
+            let message = `Успешно добавлено ${response.data.created_count} аккаунт(ов)`;
+            if (response.data.skipped_count > 0) {
+                message += `. Пропущено дубликатов: ${response.data.skipped_count}`;
             }
-            if (document.getElementById('json_data')) {
-                document.getElementById('json_data').value = '';
+            if (response.data.failed_count > 0) {
+                message += `. Ошибок: ${response.data.failed_count}`;
+            }
+            showMessage(message, 'success');
+            
+            if (response.data.failed_count > 0 || response.data.skipped_count > 0) {
+                console.log('Подробности ошибок:', response.data.errors);
+            }
+            // Очищаем форму
+            form.value.files = [];
+            accountPairs.value = [];
+            invalidFiles.value = [];
+            // Сбрасываем input файлы
+            if (document.getElementById('account_files')) {
+                document.getElementById('account_files').value = '';
             }
             await loadAccounts();
         }

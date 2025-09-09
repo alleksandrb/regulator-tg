@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TelegramAccount extends Model
 {
     protected $fillable = [
+        'user_id',
         'session_data',
         'json_data',
         'proxy_id',
@@ -72,6 +73,14 @@ class TelegramAccount extends Model
         return $query->orderBy('usage_count', 'asc')
                      ->orderBy('last_used_at', 'asc')
                      ->orderByRaw('last_used_at IS NULL DESC');
+    }
+
+    /**
+     * Скоуп для поиска по user_id
+     */
+    public function scopeByUserId($query, $userId)
+    {
+        return $query->where('user_id', $userId);
     }
 
     /**

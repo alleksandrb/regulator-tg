@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // API для управления аккаунтами
     Route::prefix('accounts')->name('accounts.')->group(function () {
         Route::post('/', [TelegramAccountController::class, 'store'])->name('store');
+        Route::post('/bulk', [TelegramAccountController::class, 'bulkStore'])->name('bulk-store');
         Route::get('/', [TelegramAccountController::class, 'index'])->name('index');
         Route::patch('/{account}/deactivate', [TelegramAccountController::class, 'deactivate'])->name('deactivate');
     });

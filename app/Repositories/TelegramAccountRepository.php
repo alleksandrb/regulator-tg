@@ -37,14 +37,36 @@ class TelegramAccountRepository
         });
     }
 
-    public function createAccount(string $session, string $jsonData): TelegramAccount
+    public function createAccount(string $session, string $jsonData, string|int|null $userId = null): TelegramAccount
     {
         $proxy = $this->proxyRepository->getProxyWithMinUsage();
 
-        return TelegramAccount::query()->create([
+        $account = TelegramAccount::query()->create([
+            'user_id' => $userId ? (string)$userId : null,
             'session_data' => $session,
             'json_data' => $jsonData,
             'proxy_id' => $proxy->id,
         ]);
+
+        // Обновляем статистику прокси
+        $proxy->incrementUsage();
+
+        return $account;
+    }
+
+    /**
+     * Проверить, существует ли аккаунт с таким user_id
+     */
+    public function existsByUserId(string|int $userId): bool
+    {
+        return TelegramAccount::query()->byUserId((string)$userId)->exists();
+    }
+
+    /**
+     * Получить аккаунт по user_id
+     */
+    public function getByUserId(string|int $userId): ?TelegramAccount
+    {
+        return TelegramAccount::query()->byUserId((string)$userId)->first();
     }
 }
