@@ -1,11 +1,12 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, reactive } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
-    stats: Object
+    stats: Object,
+    viewTasks: Object
 });
 
 const form = useForm({
@@ -15,6 +16,19 @@ const form = useForm({
 
 const message = ref('');
 const messageType = ref('');
+
+// Создаем реактивную копию данных о просмотрах
+const viewTasks = reactive({
+    data: props.viewTasks.data,
+    current_page: props.viewTasks.current_page,
+    last_page: props.viewTasks.last_page,
+    total: props.viewTasks.total,
+    from: props.viewTasks.from,
+    to: props.viewTasks.to,
+    prev_page_url: props.viewTasks.prev_page_url,
+    next_page_url: props.viewTasks.next_page_url,
+    path: props.viewTasks.path
+});
 
 const submitViews = async () => {
     try {
@@ -27,6 +41,9 @@ const submitViews = async () => {
             message.value = response.data.message;
             messageType.value = 'success';
             form.reset();
+            
+            // Обновляем список просмотров
+            await refreshViewTasks();
         }
     } catch (error) {
         message.value = error.response?.data?.message || 'Произошла ошибка';
@@ -36,6 +53,61 @@ const submitViews = async () => {
     setTimeout(() => {
         message.value = '';
     }, 5000);
+};
+
+const refreshViewTasks = async () => {
+    try {
+        const response = await axios.get('/dashboard/view-tasks');
+        if (response.data.success) {
+            viewTasks.data = response.data.viewTasks.data;
+            viewTasks.current_page = response.data.viewTasks.current_page;
+            viewTasks.last_page = response.data.viewTasks.last_page;
+            viewTasks.total = response.data.viewTasks.total;
+            viewTasks.from = response.data.viewTasks.from;
+            viewTasks.to = response.data.viewTasks.to;
+            viewTasks.prev_page_url = response.data.viewTasks.prev_page_url;
+            viewTasks.next_page_url = response.data.viewTasks.next_page_url;
+            viewTasks.path = response.data.viewTasks.path;
+        }
+    } catch (error) {
+        console.error('Ошибка при обновлении списка просмотров:', error);
+    }
+};
+
+const getPageNumbers = () => {
+    const currentPage = viewTasks.current_page;
+    const lastPage = viewTasks.last_page;
+    const pages = [];
+    
+    if (lastPage <= 7) {
+        for (let i = 1; i <= lastPage; i++) {
+            pages.push(i);
+        }
+    } else {
+        if (currentPage <= 4) {
+            for (let i = 1; i <= 5; i++) {
+                pages.push(i);
+            }
+            pages.push('...');
+            pages.push(lastPage);
+        } else if (currentPage >= lastPage - 3) {
+            pages.push(1);
+            pages.push('...');
+            for (let i = lastPage - 4; i <= lastPage; i++) {
+                pages.push(i);
+            }
+        } else {
+            pages.push(1);
+            pages.push('...');
+            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                pages.push(i);
+            }
+            pages.push('...');
+            pages.push(lastPage);
+        }
+    }
+    
+    return pages;
 };
 </script>
 
@@ -126,30 +198,93 @@ const submitViews = async () => {
                     </div>
                 </div>
 
-                <!-- Топ используемых аккаунтов -->
+                <!-- Список добавленных просмотров -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Топ используемых аккаунтов</h3>
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Добавленные просмотры</h3>
                         
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Использований</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Последнее использование</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ссылка на пост</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Просмотров</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Кто создал</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Когда создано</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="account in stats.top_used" :key="account.id">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ account.id }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ account.usage_count }}</td>
+                                    <tr v-for="task in viewTasks.data" :key="task.id">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                                            <a :href="task.telegram_post_url" target="_blank" class="hover:text-blue-800 hover:underline">
+                                                {{ task.telegram_post_url.length > 50 ? task.telegram_post_url.substring(0, 50) + '...' : task.telegram_post_url }}
+                                            </a>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ task.views_count }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ task.user.name }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ account.last_used_at ? new Date(account.last_used_at).toLocaleString('ru-RU') : 'Никогда' }}
+                                            {{ new Date(task.created_at).toLocaleString('ru-RU') }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="viewTasks.data.length === 0">
+                                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                            Задачи не найдены
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Пагинация -->
+                        <div v-if="viewTasks.last_page > 1" class="mt-6 flex items-center justify-between">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <a v-if="viewTasks.prev_page_url" 
+                                   :href="viewTasks.prev_page_url"
+                                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    Назад
+                                </a>
+                                <a v-if="viewTasks.next_page_url"
+                                   :href="viewTasks.next_page_url"
+                                   class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    Далее
+                                </a>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Показано <span class="font-medium">{{ viewTasks.from }}</span> до <span class="font-medium">{{ viewTasks.to }}</span>
+                                        из <span class="font-medium">{{ viewTasks.total }}</span> результатов
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                        <a v-if="viewTasks.prev_page_url"
+                                           :href="viewTasks.prev_page_url"
+                                           class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            ‹
+                                        </a>
+                                        <span v-for="page in getPageNumbers()" :key="page">
+                                            <a v-if="page !== '...'"
+                                               :href="`${viewTasks.path}?page=${page}`"
+                                               :class="{
+                                                   'relative inline-flex items-center px-4 py-2 border text-sm font-medium': true,
+                                                   'z-10 bg-indigo-50 border-indigo-500 text-indigo-600': page === viewTasks.current_page,
+                                                   'bg-white border-gray-300 text-gray-500 hover:bg-gray-50': page !== viewTasks.current_page
+                                               }">
+                                                {{ page }}
+                                            </a>
+                                            <span v-else class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                                ...
+                                            </span>
+                                        </span>
+                                        <a v-if="viewTasks.next_page_url"
+                                           :href="viewTasks.next_page_url"
+                                           class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            ›
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

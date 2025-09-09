@@ -24,6 +24,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Панель управления
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/add-views', [DashboardController::class, 'addViews'])->name('dashboard.add-views');
+    Route::get('/dashboard/view-tasks', [DashboardController::class, 'getViewTasks'])->name('dashboard.view-tasks');
     
     // Страница управления аккаунтами
     Route::get('/accounts/manage', function () {

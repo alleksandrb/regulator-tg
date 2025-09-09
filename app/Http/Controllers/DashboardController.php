@@ -22,9 +22,11 @@ class DashboardController extends Controller
     public function index(): Response
     {
         $stats = $this->viewService->getAccountsStats();
+        $viewTasks = $this->viewService->getViewTasks(10);
         
         return Inertia::render('Dashboard', [
-            'stats' => $stats
+            'stats' => $stats,
+            'viewTasks' => $viewTasks
         ]);
     }
 
@@ -44,6 +46,18 @@ class DashboardController extends Controller
             'success' => true,
             'message' => "Задания взято в работу",
         ]);
+    }
 
+    /**
+     * Получить список просмотров (AJAX)
+     */
+    public function getViewTasks(): JsonResponse
+    {
+        $viewTasks = $this->viewService->getViewTasks(10);
+        
+        return response()->json([
+            'success' => true,
+            'viewTasks' => $viewTasks
+        ]);
     }
 }
