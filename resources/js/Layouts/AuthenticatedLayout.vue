@@ -51,6 +51,12 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Прокси
                                 </NavLink>
+                                <NavLink
+                                    :href="route('users.manage')"
+                                    :active="route().current('users.manage')"
+                                >
+                                    Пользователи
+                                </NavLink>
                             </div>
                         </div>
 
@@ -169,6 +175,12 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('proxies.manage')"
                         >
                             Прокси
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('users.manage')"
+                            :active="route().current('users.manage')"
+                        >
+                            Пользователи
                         </ResponsiveNavLink>
                     </div>
 

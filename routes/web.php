@@ -4,18 +4,21 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TelegramAccountController;
 use App\Http\Controllers\ProxyController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+    
+    return Inertia::render('Auth/Login', [
+        'canResetPassword' => Route::has('password.request'),
+        'status' => session('status'),
     ]);
-});
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Панель управления
@@ -51,6 +54,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Управление пользователями
+    Route::get('/users/manage', [UserManagementController::class, 'index'])->name('users.manage');
+    Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+    Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
 });
 
 require __DIR__.'/auth.php';
