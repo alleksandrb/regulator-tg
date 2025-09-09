@@ -6,7 +6,8 @@ import axios from 'axios';
 
 const props = defineProps({
     stats: Object,
-    viewTasks: Object
+    viewTasks: Object,
+    availableAccountsCount: Number
 });
 
 const form = useForm({
@@ -31,6 +32,25 @@ const viewTasks = reactive({
 });
 
 const submitViews = async () => {
+    // Клиентская валидация
+    if (form.views_count > props.availableAccountsCount) {
+        message.value = `Максимальное количество просмотров: ${props.availableAccountsCount} (доступно аккаунтов)`;
+        messageType.value = 'error';
+        setTimeout(() => {
+            message.value = '';
+        }, 5000);
+        return;
+    }
+
+    if (props.availableAccountsCount === 0) {
+        message.value = 'Нет доступных аккаунтов для добавления просмотров';
+        messageType.value = 'error';
+        setTimeout(() => {
+            message.value = '';
+        }, 5000);
+        return;
+    }
+
     try {
         const response = await axios.post('/dashboard/add-views', {
             telegram_post_url: form.telegram_post_url,
@@ -172,19 +192,40 @@ const getPageNumbers = () => {
                                     id="views_count"
                                     v-model="form.views_count"
                                     min="1"
-                                    max="1000"
+                                    :max="availableAccountsCount"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     required
                                 />
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Максимум: {{ availableAccountsCount }} (доступно аккаунтов)
+                                </p>
                             </div>
                             
                             <button 
                                 type="submit" 
-                                :disabled="form.processing"
+                                :disabled="form.processing || availableAccountsCount === 0"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
                             >
-                                {{ form.processing ? 'Обработка...' : 'Добавить просмотры' }}
+                                {{ form.processing ? 'Обработка...' : (availableAccountsCount === 0 ? 'Нет доступных аккаунтов' : 'Добавить просмотры') }}
                             </button>
+                            
+                            <div v-if="availableAccountsCount === 0" class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-yellow-700">
+                                            Нет активных аккаунтов для добавления просмотров. Добавьте аккаунты в разделе 
+                                            <a href="/accounts/manage" class="font-medium underline hover:text-yellow-600">
+                                                "Управление аккаунтами"
+                                            </a>.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </form>
 
                         <!-- Сообщения -->

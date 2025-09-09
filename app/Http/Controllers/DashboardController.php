@@ -23,10 +23,12 @@ class DashboardController extends Controller
     {
         $stats = $this->viewService->getAccountsStats();
         $viewTasks = $this->viewService->getViewTasks(10);
+        $availableAccountsCount = $this->viewService->getAvailableAccountsCount();
         
         return Inertia::render('Dashboard', [
             'stats' => $stats,
-            'viewTasks' => $viewTasks
+            'viewTasks' => $viewTasks,
+            'availableAccountsCount' => $availableAccountsCount
         ]);
     }
 
@@ -37,15 +39,22 @@ class DashboardController extends Controller
     {
         $request->validated();
 
-        $this->viewService->addViews(
-            $request->input('telegram_post_url'),
-            $request->input('views_count')
-        );
+        try {
+            $this->viewService->addViews(
+                $request->input('telegram_post_url'),
+                $request->input('views_count')
+            );
 
-        return response()->json([
-            'success' => true,
-            'message' => "Задания взято в работу",
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => "Задания взято в работу",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**

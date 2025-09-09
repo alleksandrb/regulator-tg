@@ -20,6 +20,12 @@ class TelegramAccountRepository
     public function selectAvailableAccount(): ?TelegramAccount
     {
         return DB::transaction(function () {
+            // Сначала проверяем, есть ли вообще активные аккаунты
+            $activeCount = TelegramAccount::active()->count();
+            if ($activeCount === 0) {
+                return null;
+            }
+
             $account = TelegramAccount::query()->active()
                 ->orderByUsage()
                 ->lockForUpdate()
@@ -28,6 +34,11 @@ class TelegramAccountRepository
                 ->first();
 
             if ($account) {
+                // Дополнительная проверка, что аккаунт все еще активен
+                if (!$account->is_active) {
+                    return null;
+                }
+                
                 // Сразу инкрементируем счетчик, чтобы другие запросы не выбрали тот же аккаунт
                 $account->increment('usage_count');
                 $account->update(['last_used_at' => now()]);

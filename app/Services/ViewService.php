@@ -24,6 +24,17 @@ class ViewService
      */
     public function addViews(string $telegramPostUrl, int $viewsCount): void
     {
+        // Проверяем количество доступных аккаунтов перед постановкой в очередь
+        $availableAccountsCount = $this->getAvailableAccountsCount();
+        
+        if ($availableAccountsCount === 0) {
+            throw new \Exception('Нет доступных аккаунтов для добавления просмотров');
+        }
+        
+        if ($viewsCount > $availableAccountsCount) {
+            throw new \Exception("Запрошено просмотров: {$viewsCount}, доступно аккаунтов: {$availableAccountsCount}");
+        }
+
         // Сохраняем задачу в базу данных
         ViewTask::create([
             'telegram_post_url' => $telegramPostUrl,
@@ -31,20 +42,51 @@ class ViewService
             'user_id' => Auth::id(),
         ]);
         
+        $successfulTasks = 0;
+        $failedTasks = 0;
+        
         for ($i = 0; $i < $viewsCount; $i++) {
             $account = $this->accountRepository->selectAvailableAccount();
             
             if (!$account) {
-                Log::warning("No available accounts for view {$i}");
-
+                $failedTasks++;
+                Log::warning("No available accounts for view {$i} of {$viewsCount}", [
+                    'telegram_post_url' => $telegramPostUrl,
+                    'requested_views' => $viewsCount,
+                    'successful_tasks' => $successfulTasks,
+                    'failed_tasks' => $failedTasks
+                ]);
                 continue;
             }
 
-            $this->queueService->addViewIncrementTask(
-                $account,
-                $telegramPostUrl
-            );
-
+            try {
+                $this->queueService->addViewIncrementTask(
+                    $account,
+                    $telegramPostUrl
+                );
+                $successfulTasks++;
+            } catch (\Exception $e) {
+                $failedTasks++;
+                Log::error("Failed to add view increment task: " . $e->getMessage(), [
+                    'telegram_post_url' => $telegramPostUrl,
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+        
+        // Логируем результат
+        Log::info("View tasks processing completed", [
+            'telegram_post_url' => $telegramPostUrl,
+            'requested_views' => $viewsCount,
+            'successful_tasks' => $successfulTasks,
+            'failed_tasks' => $failedTasks,
+            'available_accounts_at_start' => $availableAccountsCount
+        ]);
+        
+        // Если не удалось поставить ни одной задачи, выбрасываем исключение
+        if ($successfulTasks === 0) {
+            throw new \Exception('Не удалось поставить ни одной задачи в очередь');
         }
 
     }
@@ -64,6 +106,14 @@ class ViewService
             'active' => $active,
             'inactive' => $inactive,
         ];
+    }
+
+    /**
+     * Получить количество доступных аккаунтов
+     */
+    public function getAvailableAccountsCount(): int
+    {
+        return TelegramAccount::active()->count();
     }
 
     /**
