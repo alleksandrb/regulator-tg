@@ -21,11 +21,11 @@ return new class extends Migration
             $table->string('protocol')->nullable();
             $table->string('login');
             $table->string('password');
-            $table->text('refresh_link');
-            $table->integer('usage_count')->default(0);
+            $table->text('refresh_link')->comment('Ссылка для обновления прокси');
+            $table->integer('usage_count')->default(0)->comment('Количество использований прокси');
             $table->timestamp('last_used_at')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->integer('max_accounts')->default(10);
+            $table->integer('max_accounts')->default(10)->comment('Максимальное количество аккаунтов для прокси');
             $table->timestamps();
             
             $table->index(['is_active', 'usage_count']);

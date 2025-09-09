@@ -33,9 +33,28 @@ class ProxyRepository
 
     public function getProxyWithMinUsage(): Proxy
     {
-        return Proxy::orderBy('usage_count', 'asc')
+        // Сначала получаем все активные прокси с подсчетом аккаунтов
+        $proxy = Proxy::query()
             ->where('is_active', true)
+            ->withCount('telegramAccounts')
+            ->get()
+            ->filter(function ($proxy) {
+                // Фильтруем прокси, которые не достигли лимита
+                return $proxy->max_accounts === null || 
+                       $proxy->max_accounts === 0 || 
+                       $proxy->telegram_accounts_count < $proxy->max_accounts;
+            })
+            ->sortBy([
+                ['telegram_accounts_count', 'asc'],
+                ['id', 'asc']
+            ])
             ->first();
+
+        if (!$proxy) {
+            throw new \Exception('Нет доступных прокси для привязки нового аккаунта');
+        }
+
+        return $proxy;
     }
     
 }
