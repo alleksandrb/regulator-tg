@@ -24,25 +24,25 @@ class TelegramAccountController extends Controller
     {
         $request->validated();
 
-        $session = base64_encode($request->file('session_data')->get());
+        $session = $request->file('session_data')->get();
         $jsonData = $request->file('json_data')->get();
         
         // Извлекаем user_id из JSON
         $jsonDecoded = json_decode($jsonData, true);
-        $userId = isset($jsonDecoded['user_id']) ? (string)$jsonDecoded['user_id'] : null;
+        $accountId = isset($jsonDecoded['user_id']) ? (string)$jsonDecoded['user_id'] : null;
 
         // Проверяем уникальность user_id
-        if ($userId && $this->telegramAccountRepository->existsByUserId($userId)) {
+        if ($accountId && $this->telegramAccountRepository->existsByUserId($accountId)) {
             return response()->json([
                 'success' => false,
-                'message' => "Аккаунт с user_id {$userId} уже существует"
+                'message' => "Аккаунт с user_id {$accountId} уже существует"
             ], 422);
         }
 
         $account = $this->telegramAccountRepository->createAccount(
             $session,
             $jsonData,
-            $userId
+            $accountId
         );
 
         return response()->json([
@@ -66,7 +66,7 @@ class TelegramAccountController extends Controller
 
         foreach ($validated['accounts'] as $accountData) {
             try {
-                $session = base64_encode($accountData['session_data']->get());
+                $session = $accountData['session_data']->get();
                 $jsonData = $accountData['json_data']->get();
                 
                 // Извлекаем user_id из JSON
@@ -126,7 +126,7 @@ class TelegramAccountController extends Controller
     public function index(): JsonResponse
     {
         $accounts = TelegramAccount::with('proxy')
-            ->select(['id', 'user_id', 'proxy_id', 'usage_count', 'last_used_at', 'is_active', 'created_at'])
+            ->select(['id', 'account_id', 'proxy_id', 'usage_count', 'last_used_at', 'is_active', 'created_at'])
             ->get();
 
         return response()->json([

@@ -15,6 +15,7 @@ services:
             dockerfile: Dockerfile
         container_name: ${APP_NAME}-fpm
         stop_grace_period: 10s
+        user: "1000:1001"
         networks:
             - app_network
         volumes:

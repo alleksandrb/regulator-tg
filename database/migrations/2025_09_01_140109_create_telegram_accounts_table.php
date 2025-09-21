@@ -15,9 +15,8 @@ return new class extends Migration
     {
         Schema::create('telegram_accounts', function (Blueprint $table) {
             $table->id();
-            $table->text('session_data');
-            $table->json('json_data');
-            $table->unsignedBigInteger('proxy_id')->nullable();
+            $table->string('account_id')->unique();
+            $table->integer('proxy_id')->nullable();
             $table->integer('usage_count')->default(0);
             $table->timestamp('last_used_at')->nullable();
             $table->boolean('is_active')->default(true);

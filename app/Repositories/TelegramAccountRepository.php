@@ -6,11 +6,13 @@ namespace App\Repositories;
 
 use App\Models\TelegramAccount;
 use Illuminate\Support\Facades\DB;
+use App\Services\TelegramFileService;
 
 class TelegramAccountRepository
 {
     public function __construct(
-        private ProxyRepository $proxyRepository
+        private ProxyRepository $proxyRepository,
+        private TelegramFileService $fileService
     ) {}
 
     /**
@@ -48,21 +50,28 @@ class TelegramAccountRepository
         });
     }
 
-    public function createAccount(string $session, string $jsonData, string|int|null $userId = null): TelegramAccount
+    public function createAccount(string $session, string $jsonData, string $accountId): TelegramAccount
     {
         $proxy = $this->proxyRepository->getProxyWithMinUsage();
 
-        $account = TelegramAccount::query()->create([
-            'user_id' => $userId ? (string)$userId : null,
-            'session_data' => $session,
-            'json_data' => $jsonData,
-            'proxy_id' => $proxy->id,
-        ]);
+        // Сохраняем файлы на диск и получаем уникальное имя файла
+        $filename = $this->fileService->saveFiles($session, $jsonData, $accountId);
 
-        // Обновляем статистику прокси
-        $proxy->incrementUsage();
+        try {
+            $account = TelegramAccount::query()->create([
+                'account_id' => $accountId,
+                'proxy_id' => $proxy->id,
+            ]);
 
-        return $account;
+            // Обновляем статистику прокси
+            $proxy->incrementUsage();
+
+            return $account;
+        } catch (\Exception $e) {
+            // Если создание аккаунта не удалось, удаляем файлы
+            $this->fileService->deleteFiles($filename);
+            throw $e;
+        }
     }
 
     /**

@@ -6,13 +6,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Services\TelegramFileService;
 
 class TelegramAccount extends Model
 {
     protected $fillable = [
-        'user_id',
-        'session_data',
-        'json_data',
+        'account_id',
+        'filename',
         'proxy_id',
         'usage_count',
         'last_used_at',
@@ -20,33 +20,15 @@ class TelegramAccount extends Model
     ];
 
     protected $casts = [
-        'json_data' => 'array',
         'last_used_at' => 'datetime',
         'is_active' => 'boolean',
     ];
 
-    public function getSession(): string
-    {
-        return $this->session_data;
-    }
 
     public function getJsonData(): array
     {
-        $jsonData = $this->json_data;
-        
-        // If the cast failed and we have a string, decode it manually
-        if (is_string($jsonData)) {
-            $decoded = json_decode($jsonData, true);
-            return is_array($decoded) ? $decoded : [];
-        }
-        
-        // If it's already an array (cast worked), return it
-        if (is_array($jsonData)) {
-            return $jsonData;
-        }
-        
-        // Fallback to empty array if null or other type
-        return [];
+        $fileService = app(TelegramFileService::class);
+        return $fileService->getJsonData($this->filename);
     }
 
     /**
@@ -80,7 +62,7 @@ class TelegramAccount extends Model
      */
     public function scopeByUserId($query, $userId)
     {
-        return $query->where('user_id', $userId);
+        return $query->where('account_id', $userId);
     }
 
     /**
@@ -90,5 +72,18 @@ class TelegramAccount extends Model
     {
         $this->increment('usage_count');
         $this->update(['last_used_at' => now()]);
+    }
+
+    /**
+     * Удалить файлы при удалении модели
+     */
+    protected static function booted()
+    {
+        static::deleting(function ($account) {
+            if ($account->filename) {
+                $fileService = app(TelegramFileService::class);
+                $fileService->deleteFiles($account->filename);
+            }
+        });
     }
 }
