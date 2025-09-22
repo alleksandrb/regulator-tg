@@ -61,24 +61,26 @@ class ViewService
         $successfulTasks = 0;
         $failedTasks = 0;
         
+        for ($i = 0; $i < 2; $i++) {
         // Ставим задачи в очередь для каждого полученного аккаунта
-        foreach ($accounts as $account) {
-            try {
-                $this->queueService->addViewIncrementTask(
-                    $account,
-                    $telegramPostUrl
-                );
-                $successfulTasks++;
-            } catch (\Exception $e) {
-                $failedTasks++;
-                Log::error("Failed to add view increment task: " . $e->getMessage(), [
-                    'telegram_post_url' => $telegramPostUrl,
-                    'account_id' => $account->id,
-                    'error' => $e->getMessage()
-                ]);
+            foreach ($accounts as $account) {
+                try {
+                    $this->queueService->addViewIncrementTask(
+                        $account,
+                        $telegramPostUrl
+                    );
+                    $successfulTasks++;
+                } catch (\Exception $e) {
+                    $failedTasks++;
+                    Log::error("Failed to add view increment task: " . $e->getMessage(), [
+                        'telegram_post_url' => $telegramPostUrl,
+                        'account_id' => $account->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
         }
-        
+
         // Логируем результат
         Log::info("View tasks processing completed", [
             'telegram_post_url' => $telegramPostUrl,
