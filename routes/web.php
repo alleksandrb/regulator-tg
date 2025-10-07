@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
+// Публичная страница с документацией API (ReDoc)
+Route::get('/api-docs', function () {
+    return view('api-docs');
+})->name('api.docs');
+
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');

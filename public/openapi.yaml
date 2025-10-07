@@ -1,0 +1,219 @@
+openapi: 3.0.3
+info:
+  title: Regulator TG API
+  version: 1.0.0
+  description: |
+    API для управления просмотрами в Telegram. Аутентификация через API токен.
+    
+    Поддерживаемые способы передачи токена:
+    - Заголовок `Authorization: Bearer {token}`
+    - Заголовок `X-API-Token: {token}`
+servers:
+  - url: /api
+    description: Base API path
+paths:
+  /v1/token/check:
+    get:
+      summary: Проверить статус API токена
+      security:
+        - bearerAuth: []
+        - xApiToken: []
+      responses:
+        '200':
+          description: Информация о токене
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenCheckResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /v1/stats:
+    get:
+      summary: Получить статистику доступных аккаунтов
+      security:
+        - bearerAuth: []
+        - xApiToken: []
+      responses:
+        '200':
+          description: Статистика
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '500':
+          description: Ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /v1/views:
+    post:
+      summary: Добавить просмотры для поста
+      security:
+        - bearerAuth: []
+        - xApiToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddViewsRequest'
+      responses:
+        '200':
+          description: Задача поставлена в очередь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddViewsResponse'
+        '422':
+          description: Ошибка валидации или бизнес-ошибка
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Token
+    xApiToken:
+      type: apiKey
+      in: header
+      name: X-API-Token
+  responses:
+    UnauthorizedError:
+      description: Неавторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnauthorizedResponse'
+  schemas:
+    SuccessFlag:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    UnauthorizedResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessFlag'
+        - type: object
+          properties:
+            error:
+              type: string
+              example: Unauthorized
+            message:
+              type: string
+              example: API token is required
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessFlag'
+        - type: object
+          properties:
+            error:
+              type: string
+              example: Bad Request
+            message:
+              type: string
+              example: Unable to process request
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessFlag'
+        - type: object
+          properties:
+            error:
+              type: string
+              example: Validation Error
+            message:
+              type: string
+              example: The given data was invalid
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+    TokenCheckResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessFlag'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                token_name:
+                  type: string
+                token_description:
+                  type: string
+                  nullable: true
+                last_used_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                is_active:
+                  type: boolean
+          required: [data]
+    StatsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessFlag'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                available_accounts:
+                  type: integer
+                  minimum: 0
+                stats:
+                  type: array
+                  items:
+                    type: object
+          required: [data]
+    AddViewsRequest:
+      type: object
+      properties:
+        telegram_post_url:
+          type: string
+          format: uri
+          description: Ссылка на пост Telegram (t.me или telegram.me)
+          examples:
+            - https://t.me/channel/123
+        views_count:
+          type: integer
+          minimum: 1
+          description: Количество просмотров (не больше доступных аккаунтов)
+      required: [telegram_post_url, views_count]
+    AddViewsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessFlag'
+        - type: object
+          properties:
+            message:
+              type: string
+              example: Views task has been queued successfully
+            data:
+              type: object
+              properties:
+                telegram_post_url:
+                  type: string
+                  format: uri
+                views_count:
+                  type: integer
+                requested_by:
+                  type: string
+                requested_at:
+                  type: string
+                  format: date-time
+          required: [message, data]
+
