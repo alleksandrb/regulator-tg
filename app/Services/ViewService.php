@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\TelegramAccount;
+use App\Models\User;
 use App\Models\ViewTask;
 use App\Repositories\TelegramAccountRepository;
 use App\Services\QueueService;
@@ -55,7 +56,7 @@ class ViewService
         ViewTask::create([
             'telegram_post_url' => $telegramPostUrl,
             'views_count' => $actualAccountsCount, // Сохраняем фактическое количество
-            'user_id' => Auth::id(),
+            'user_id' => Auth::id() ?? User::query()->where('name', 'Bot')->first()->id,
         ]);
         
         $successfulTasks = 0;
