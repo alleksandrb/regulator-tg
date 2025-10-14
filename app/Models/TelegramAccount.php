@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Services\TelegramFileService;
 
 class TelegramAccount extends Model
@@ -37,6 +38,14 @@ class TelegramAccount extends Model
     public function proxy(): BelongsTo
     {
         return $this->belongsTo(Proxy::class);
+    }
+
+    /**
+     * Посты, которые аккаунт уже просмотрел
+     */
+    public function postViews(): HasMany
+    {
+        return $this->hasMany(AccountPostView::class, 'telegram_account_id');
     }
 
     /**

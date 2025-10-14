@@ -25,8 +25,12 @@ class ViewService
      */
     public function addViews(string $telegramPostUrl, int $viewsCount): void
     {
-        // Проверяем количество доступных аккаунтов перед постановкой в очередь
-        $availableAccountsCount = $this->getAvailableAccountsCount();
+        // Проверяем количество доступных аккаунтов, которые ещё не смотрели этот пост
+        $availableAccountsCount = TelegramAccount::query()->where('is_active', true)
+            ->whereDoesntHave('postViews', function ($q) use ($telegramPostUrl) {
+                $q->where('telegram_post_url', $telegramPostUrl);
+            })
+            ->count();
         
         if ($availableAccountsCount === 0) {
             throw new \Exception('Нет доступных аккаунтов для добавления просмотров');
@@ -36,8 +40,8 @@ class ViewService
             throw new \Exception("Запрошено просмотров: {$viewsCount}, доступно аккаунтов: {$availableAccountsCount}");
         }
 
-        // Получаем все необходимые аккаунты одним запросом
-        $accounts = $this->accountRepository->selectMultipleAvailableAccounts($viewsCount);
+        // Получаем подходящие аккаунты одним запросом (не смотревшие этот пост)
+        $accounts = $this->accountRepository->selectMultipleAvailableAccountsForPost($telegramPostUrl, $viewsCount);
         
         if ($accounts->isEmpty()) {
             throw new \Exception('Не удалось получить аккаунты для постановки задач в очередь');
@@ -62,14 +66,20 @@ class ViewService
         $successfulTasks = 0;
         $failedTasks = 0;
         
+        // Ставим задачи в очередь и фиксируем, что аккаунт назначен на этот пост
         for ($i = 0; $i < 2; $i++) {
-        // Ставим задачи в очередь для каждого полученного аккаунта
+
             foreach ($accounts as $account) {
                 try {
                     $this->queueService->addViewIncrementTask(
                         $account,
                         $telegramPostUrl
                     );
+                    // сохраняем факт назначения, чтобы больше этот аккаунт не брали для этого поста
+                    \App\Models\AccountPostView::query()->firstOrCreate([
+                        'telegram_account_id' => $account->id,
+                        'telegram_post_url' => $telegramPostUrl,
+                    ]);
                     $successfulTasks++;
                 } catch (\Exception $e) {
                     $failedTasks++;
@@ -81,7 +91,6 @@ class ViewService
                 }
             }
         }
-
         // Логируем результат
         Log::info("View tasks processing completed", [
             'telegram_post_url' => $telegramPostUrl,

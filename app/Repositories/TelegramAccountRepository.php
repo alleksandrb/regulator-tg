@@ -119,4 +119,33 @@ class TelegramAccountRepository
             return $accounts;
         });
     }
+
+    /**
+     * Выбрать множество доступных аккаунтов, которые ещё не смотрели указанный пост
+     */
+    public function selectMultipleAvailableAccountsForPost(string $telegramPostUrl, int $count): \Illuminate\Database\Eloquent\Collection
+    {
+        return DB::transaction(function () use ($telegramPostUrl, $count) {
+            /** @var \Illuminate\Database\Eloquent\Collection $accounts */
+            $accounts = TelegramAccount::query()
+                ->where('is_active', true)
+                ->whereDoesntHave('postViews', function ($q) use ($telegramPostUrl) {
+                    $q->where('telegram_post_url', $telegramPostUrl);
+                })
+                ->orderByUsage()
+                ->lockForUpdate()
+                ->take($count)
+                ->get();
+
+            if ($accounts->isEmpty()) {
+                return $accounts;
+            }
+
+            $accountIds = $accounts->pluck('id')->toArray();
+            TelegramAccount::whereIn('id', $accountIds)->increment('usage_count');
+            TelegramAccount::whereIn('id', $accountIds)->update(['last_used_at' => now()]);
+
+            return $accounts;
+        });
+    }
 }
