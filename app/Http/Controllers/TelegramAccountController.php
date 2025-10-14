@@ -183,7 +183,8 @@ class TelegramAccountController extends Controller
     {
         $accounts = TelegramAccount::with('proxy')
             ->select(['id', 'account_id', 'proxy_id', 'usage_count', 'last_used_at', 'is_active', 'created_at'])
-            ->get();
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
 
         return response()->json([
             'success' => true,

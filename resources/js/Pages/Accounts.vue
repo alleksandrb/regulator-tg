@@ -123,10 +123,10 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="account in accounts" :key="account.id">
+                                    <tr v-for="account in accounts.data" :key="account.id">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ account.id }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                                            {{ account.user_id || '-' }}
+                                            {{ account.account_id || '-' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {{ account.proxy_id || '-' }}
@@ -154,13 +154,76 @@
                                             </button>
                                         </td>
                                     </tr>
-                                    <tr v-if="accounts.length === 0">
+                                    <tr v-if="accounts.data && accounts.data.length === 0">
                                         <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                                             Аккаунты не найдены
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Пагинация -->
+                        <div v-if="accounts.last_page > 1" class="mt-6 flex items-center justify-between">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <button
+                                    @click="changePage(accounts.current_page - 1)"
+                                    :disabled="!accounts.prev_page_url"
+                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                    Предыдущая
+                                </button>
+                                <button
+                                    @click="changePage(accounts.current_page + 1)"
+                                    :disabled="!accounts.next_page_url"
+                                    class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                    Следующая
+                                </button>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Показано
+                                        <span class="font-medium">{{ accounts.from || 0 }}</span>
+                                        -
+                                        <span class="font-medium">{{ accounts.to || 0 }}</span>
+                                        из
+                                        <span class="font-medium">{{ accounts.total }}</span>
+                                        результатов
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                        <button
+                                            @click="changePage(accounts.current_page - 1)"
+                                            :disabled="!accounts.prev_page_url"
+                                            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                        >
+                                            ←
+                                        </button>
+                                        <template v-for="page in getVisiblePages()" :key="page">
+                                            <button
+                                                @click="changePage(page)"
+                                                :class="{
+                                                    'relative inline-flex items-center px-4 py-2 border text-sm font-medium': true,
+                                                    'z-10 bg-indigo-50 border-indigo-500 text-indigo-600': page === accounts.current_page,
+                                                    'bg-white border-gray-300 text-gray-500 hover:bg-gray-50': page !== accounts.current_page
+                                                }"
+                                            >
+                                                {{ page }}
+                                            </button>
+                                        </template>
+                                        <button
+                                            @click="changePage(accounts.current_page + 1)"
+                                            :disabled="!accounts.next_page_url"
+                                            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                        >
+                                            →
+                                        </button>
+                                    </nav>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -179,7 +242,16 @@ const form = ref({
     files: [],
     proxy_file: null
 });
-const accounts = ref([]);
+const accounts = ref({
+    data: [],
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    from: 0,
+    to: 0,
+    prev_page_url: null,
+    next_page_url: null
+});
 const accountPairs = ref([]);
 const invalidFiles = ref([]);
 const loading = ref(false);
@@ -314,15 +386,49 @@ const submitAccounts = async () => {
     }
 };
 
-const loadAccounts = async () => {
+const loadAccounts = async (page = 1) => {
     try {
-        const response = await axios.get('/accounts');
+        const response = await axios.get(`/accounts?page=${page}`);
         if (response.data.success) {
             accounts.value = response.data.accounts;
         }
     } catch (error) {
         showMessage('Ошибка при загрузке аккаунтов', 'error');
     }
+};
+
+const changePage = (page) => {
+    if (page >= 1 && page <= accounts.value.last_page) {
+        loadAccounts(page);
+    }
+};
+
+const getVisiblePages = () => {
+    const current = accounts.value.current_page;
+    const last = accounts.value.last_page;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, current - delta); i <= Math.min(last - 1, current + delta); i++) {
+        range.push(i);
+    }
+
+    if (current - delta > 2) {
+        rangeWithDots.push(1, '...');
+    } else {
+        rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (current + delta < last - 1) {
+        rangeWithDots.push('...', last);
+    } else if (last > 1) {
+        rangeWithDots.push(last);
+    }
+
+    return rangeWithDots.filter(page => page !== '...' || true);
 };
 
 const deactivateAccount = async (accountId) => {
