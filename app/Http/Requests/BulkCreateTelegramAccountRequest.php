@@ -15,6 +15,7 @@ class BulkCreateTelegramAccountRequest extends FormRequest
             'accounts.*.session_data' => 'required|file|max:10240',
             'accounts.*.json_data' => 'required|file|mimes:json,txt|max:1024',
             'accounts.*.name' => 'sometimes|string|max:255',
+            'proxy_file' => 'sometimes|file|mimes:txt|max:2048',
         ];
     }
 
@@ -30,6 +31,9 @@ class BulkCreateTelegramAccountRequest extends FormRequest
             'accounts.*.json_data.file' => 'JSON данные должны быть файлом',
             'accounts.*.json_data.mimes' => 'JSON файл должен иметь расширение .json или .txt',
             'accounts.*.json_data.max' => 'Размер JSON файла не должен превышать 1MB',
+            'proxy_file.file' => 'Файл прокси должен быть валидным файлом',
+            'proxy_file.mimes' => 'Файл прокси должен быть в формате TXT',
+            'proxy_file.max' => 'Размер файла прокси не должен превышать 2MB',
         ];
     }
 }

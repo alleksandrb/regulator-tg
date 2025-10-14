@@ -56,6 +56,25 @@
                                     </div>
                                 </div>
                             </div>
+                            <div>
+                                <label for="proxy_file" class="block text-sm font-medium text-gray-700">
+                                    Необязательно: файл с прокси (TXT)
+                                </label>
+                                <input 
+                                    type="file"
+                                    id="proxy_file"
+                                    ref="proxyFileInput"
+                                    @change="handleProxyFile"
+                                    class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    accept=".txt"
+                                />
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Если приложить файл с прокси, аккаунты будут по порядку привязаны к ним. При нехватке — оставшиеся возьмут наименее загруженные прокси.
+                                </p>
+                                <div v-if="form.proxy_file" class="mt-2 text-sm text-green-600">
+                                    ✓ Файл выбран: {{ form.proxy_file.name }} ({{ formatFileSize(form.proxy_file.size) }})
+                                </div>
+                            </div>
                             
                             <button 
                                 type="submit" 
@@ -157,7 +176,8 @@ import { ref, onMounted } from 'vue';
 import axios from 'axios';
 
 const form = ref({
-    files: []
+    files: [],
+    proxy_file: null
 });
 const accounts = ref([]);
 const accountPairs = ref([]);
@@ -220,6 +240,11 @@ const handleAccountFiles = (event) => {
     invalidFiles.value = [...incomplete, ...orphanFiles];
 };
 
+const handleProxyFile = (event) => {
+    const file = event.target.files[0];
+    form.value.proxy_file = file || null;
+};
+
 const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -245,6 +270,9 @@ const submitAccounts = async () => {
             formData.append(`accounts[${index}][json_data]`, pair.jsonFile);
             formData.append(`accounts[${index}][name]`, pair.name);
         });
+        if (form.value.proxy_file) {
+            formData.append('proxy_file', form.value.proxy_file);
+        }
         
         const response = await axios.post('/accounts/bulk', formData, {
             headers: {
@@ -267,11 +295,15 @@ const submitAccounts = async () => {
             }
             // Очищаем форму
             form.value.files = [];
+            form.value.proxy_file = null;
             accountPairs.value = [];
             invalidFiles.value = [];
             // Сбрасываем input файлы
             if (document.getElementById('account_files')) {
                 document.getElementById('account_files').value = '';
+            }
+            if (document.getElementById('proxy_file')) {
+                document.getElementById('proxy_file').value = '';
             }
             await loadAccounts();
         }

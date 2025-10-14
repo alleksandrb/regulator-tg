@@ -50,9 +50,11 @@ class TelegramAccountRepository
         });
     }
 
-    public function createAccount(string $session, string $jsonData, string $accountId): TelegramAccount
+    public function createAccount(string $session, string $jsonData, string $accountId, ?int $proxyId = null): TelegramAccount
     {
-        $proxy = $this->proxyRepository->getProxyWithMinUsage();
+        $proxy = $proxyId
+            ? \App\Models\Proxy::query()->findOrFail($proxyId)
+            : $this->proxyRepository->getProxyWithMinUsage();
 
         // Сохраняем файлы на диск и получаем уникальное имя файла
         $filename = $this->fileService->saveFiles($session, $jsonData, $accountId);
