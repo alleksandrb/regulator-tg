@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\AddViewRequest;
 use App\Services\ViewService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,16 +20,18 @@ class DashboardController extends Controller
     /**
      * Показать панель управления
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $stats = $this->viewService->getAccountsStats();
-        $viewTasks = $this->viewService->getViewTasks(10);
+        $telegramPostUrlFilter = (string) $request->query('telegram_post_url', '');
+        $viewTasks = $this->viewService->getViewTasks(10, $telegramPostUrlFilter)->withQueryString();
         $availableAccountsCount = $this->viewService->getAvailableAccountsCount();
         
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'viewTasks' => $viewTasks,
-            'availableAccountsCount' => $availableAccountsCount
+            'availableAccountsCount' => $availableAccountsCount,
+            'telegramPostUrlFilter' => $telegramPostUrlFilter,
         ]);
     }
 
@@ -60,9 +63,12 @@ class DashboardController extends Controller
     /**
      * Получить список просмотров (AJAX)
      */
-    public function getViewTasks(): JsonResponse
+    public function getViewTasks(Request $request): JsonResponse
     {
-        $viewTasks = $this->viewService->getViewTasks(10);
+        $telegramPostUrlFilter = (string) $request->query('telegram_post_url', '');
+        $viewTasks = $this->viewService->getViewTasks(10, $telegramPostUrlFilter)
+            ->withQueryString()
+            ->withPath(route('dashboard'));
         
         return response()->json([
             'success' => true,

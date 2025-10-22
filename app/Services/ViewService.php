@@ -135,11 +135,19 @@ class ViewService
 
     /**
      * Получить список добавленных просмотров с пагинацией
+     *
+     * @param int $perPage
+     * @param string|null $telegramPostUrlFilter
      */
-    public function getViewTasks(int $perPage = 10): \Illuminate\Pagination\LengthAwarePaginator
+    public function getViewTasks(int $perPage = 10, ?string $telegramPostUrlFilter = null): \Illuminate\Pagination\LengthAwarePaginator
     {
-        return ViewTask::with('user:id,name')
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['id', 'telegram_post_url', 'views_count', 'user_id', 'created_at']);
+        $query = ViewTask::with('user:id,name')
+            ->orderBy('created_at', 'desc');
+
+        if ($telegramPostUrlFilter !== null && $telegramPostUrlFilter !== '') {
+            $query->where('telegram_post_url', 'like', '%'.$telegramPostUrlFilter.'%');
+        }
+
+        return $query->paginate($perPage, ['id', 'telegram_post_url', 'views_count', 'user_id', 'created_at']);
     }
 }
