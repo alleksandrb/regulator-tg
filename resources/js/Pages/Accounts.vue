@@ -99,64 +99,47 @@
                 <!-- Список аккаунтов -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">Список аккаунтов</h3>
-                            <button 
-                                @click="loadAccounts"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                            >
-                                Обновить
-                            </button>
+                        <div class="mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">История импортов аккаунтов</h3>
                         </div>
                         
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Прокси</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Использований</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Последнее использование</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Передано</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Добавлено</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пропущено</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата и время</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="account in accounts.data" :key="account.id">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ account.id }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                                            {{ account.account_id || '-' }}
-                                        </td>
+                                    <tr v-for="imp in accounts.data" :key="imp.id">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ account.proxy_id || '-' }}
+                                            {{ imp.user?.name || '-' }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ account.usage_count }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ account.last_used_at ? new Date(account.last_used_at).toLocaleString('ru-RU') : 'Никогда' }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ imp.total_count }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ imp.created_count }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ imp.skipped_count }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span :class="{
                                                 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium': true,
-                                                'bg-green-100 text-green-800': account.is_active,
-                                                'bg-red-100 text-red-800': !account.is_active
+                                                'bg-yellow-100 text-yellow-800': imp.status === 'queued' || imp.status === 'processing',
+                                                'bg-green-100 text-green-800': imp.status === 'completed',
+                                                'bg-red-100 text-red-800': imp.status === 'failed'
                                             }">
-                                                {{ account.is_active ? 'Активен' : 'Неактивен' }}
+                                                {{ statusLabel(imp.status) }}
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button 
-                                                v-if="account.is_active"
-                                                @click="deactivateAccount(account.id)"
-                                                class="text-red-600 hover:text-red-900"
-                                            >
-                                                Деактивировать
-                                            </button>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ imp.created_at ? new Date(imp.created_at).toLocaleString('ru-RU') : '-' }}
                                         </td>
                                     </tr>
                                     <tr v-if="accounts.data && accounts.data.length === 0">
-                                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
-                                            Аккаунты не найдены
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                            Импорты не найдены
                                         </td>
                                     </tr>
                                 </tbody>
@@ -266,6 +249,16 @@ const showMessage = (msg, type) => {
     }, 5000);
 };
 
+const statusLabel = (status) => {
+    const map = {
+        queued: 'В очереди',
+        processing: 'В обработке',
+        completed: 'Завершено',
+        failed: 'Ошибка'
+    };
+    return map[status] || status;
+};
+
 const handleAccountFiles = (event) => {
     const files = Array.from(event.target.files);
     form.value.files = files;
@@ -353,30 +346,24 @@ const submitAccounts = async () => {
         });
         
         if (response.data.success) {
-            let message = `Успешно добавлено ${response.data.created_count} аккаунт(ов)`;
-            if (response.data.skipped_count > 0) {
-                message += `. Пропущено дубликатов: ${response.data.skipped_count}`;
+            let msg = response.data.message || 'Задача взята в работу';
+            if (response.data.batch_id) {
+                msg += ` (ID: ${response.data.batch_id})`;
             }
-            if (response.data.failed_count > 0) {
-                message += `. Ошибок: ${response.data.failed_count}`;
-            }
-            showMessage(message, 'success');
-            
-            if (response.data.failed_count > 0 || response.data.skipped_count > 0) {
-                console.log('Подробности ошибок:', response.data.errors);
-            }
+            showMessage(msg, 'success');
+
             // Очищаем форму
             form.value.files = [];
             form.value.proxy_file = null;
             accountPairs.value = [];
             invalidFiles.value = [];
             // Сбрасываем input файлы
-            if (document.getElementById('account_files')) {
-                document.getElementById('account_files').value = '';
-            }
-            if (document.getElementById('proxy_file')) {
-                document.getElementById('proxy_file').value = '';
-            }
+            const accountInput = document.getElementById('account_files');
+            if (accountInput) accountInput.value = '';
+            const proxyInput = document.getElementById('proxy_file');
+            if (proxyInput) proxyInput.value = '';
+
+            // Обновим список аккаунтов — новые появятся после фоновой обработки
             await loadAccounts();
         }
     } catch (error) {
@@ -390,10 +377,10 @@ const loadAccounts = async (page = 1) => {
     try {
         const response = await axios.get(`/accounts?page=${page}`);
         if (response.data.success) {
-            accounts.value = response.data.accounts;
+            accounts.value = response.data.imports;
         }
     } catch (error) {
-        showMessage('Ошибка при загрузке аккаунтов', 'error');
+        showMessage('Ошибка при загрузке импортов', 'error');
     }
 };
 
