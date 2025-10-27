@@ -7,7 +7,8 @@ networks:
 volumes:
     dbdata:
     redisdata:
-
+    metabase-data:
+    
 services:
     fpm: &app-container
         build:
@@ -95,3 +96,14 @@ services:
         command: sh -c "npm install && npm run build"
         depends_on:
             - fpm
+
+    metabase:
+        image: metabase/metabase:latest
+        container_name: ${APP_NAME}-metabase
+        restart: always
+        ports:
+            - "3000:3000"
+        volumes:
+            - metabase-data:/metabase.db
+        networks:
+            - app_network
