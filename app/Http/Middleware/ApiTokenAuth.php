@@ -8,6 +8,7 @@ use App\Models\ApiToken;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApiTokenAuth
@@ -47,8 +48,15 @@ class ApiTokenAuth
         // Обновляем время последнего использования
         $apiToken->updateLastUsed();
 
-        // Добавляем токен в request для дальнейшего использования
+        // Добавляем токен и пользователя в request для дальнейшего использования
         $request->attributes->set('api_token', $apiToken);
+        $request->attributes->set('api_user', $apiToken->user);
+        // Позволяет использовать $request->user() для получения владельца токена
+        $request->setUserResolver(function () use ($apiToken) {
+            return $apiToken->user;
+        });
+        // Устанавливаем пользователя в глобальный Auth, чтобы Auth::id() работал во всем приложении
+        Auth::setUser($apiToken->user);
 
         return $next($request);
     }

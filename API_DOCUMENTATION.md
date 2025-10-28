@@ -6,6 +6,8 @@
 
 Для использования API необходим токен авторизации. Токен можно получить у администратора системы.
 
+Каждый API токен теперь привязан к конкретному пользователю системы. Все запросы, выполненные с использованием токена, учитываются как действия этого пользователя.
+
 ### Способы передачи токена:
 
 1. **Bearer Token в заголовке Authorization:**
@@ -238,11 +240,12 @@ else:
 Для создания нового API токена используйте команду:
 
 ```bash
-php artisan api:create-token "Service Name" --description="Description of the service" --expires-days=365 --allowed-ips=192.168.1.100 --allowed-ips=10.0.0.0/8
+php artisan api:create-token "Service Name" --user-email=user@example.com --description="Description of the service" --expires-days=365 --allowed-ips=192.168.1.100 --allowed-ips=10.0.0.0/8
 ```
 
 Параметры:
 - `name` - название токена (обязательный)
+- `--user-id` или `--user-email` - владелец токена (обязательно указать один из вариантов)
 - `--description` - описание токена (опционально)
 - `--expires-days` - количество дней до истечения токена (опционально)
 - `--allowed-ips` - разрешенные IP-адреса или подсети (можно указать несколько раз, опционально)
@@ -251,16 +254,17 @@ php artisan api:create-token "Service Name" --description="Description of the se
 
 ```bash
 # Токен без ограничений по IP (доступ с любых адресов)
-php artisan api:create-token "Public API"
+php artisan api:create-token "Public API" --user-id=1
 
 # Токен с ограничением на один IP
-php artisan api:create-token "Office API" --allowed-ips=203.0.113.10
+php artisan api:create-token "Office API" --user-email=office@example.com --allowed-ips=203.0.113.10
 
 # Токен с ограничением на подсеть
-php artisan api:create-token "Internal API" --allowed-ips=192.168.1.0/24
+php artisan api:create-token "Internal API" --user-id=2 --allowed-ips=192.168.1.0/24
 
 # Токен с несколькими разрешенными IP/подсетями
 php artisan api:create-token "Multi-location API" \
+  --user-email=multi@example.com \
   --allowed-ips=203.0.113.10 \
   --allowed-ips=198.51.100.0/24 \
   --allowed-ips=2001:db8::1

@@ -16,6 +16,8 @@ class CreateApiToken extends Command
      */
     protected $signature = 'api:create-token 
                             {name : The name of the API token}
+                            {--user-id= : ID of the user who owns the token}
+                            {--user-email= : Email of the user who owns the token}
                             {--description= : Description of the token}
                             {--expires-days= : Number of days until token expires}
                             {--allowed-ips=* : Allowed IP addresses (can be specified multiple times)}';
@@ -33,9 +35,28 @@ class CreateApiToken extends Command
     public function handle(): int
     {
         $name = $this->argument('name');
+        $userId = $this->option('user-id');
+        $userEmail = $this->option('user-email');
         $description = $this->option('description');
         $expiresDays = $this->option('expires-days');
         $allowedIps = $this->option('allowed-ips');
+
+        if (!$userId && !$userEmail) {
+            $this->error('You must provide either --user-id or --user-email');
+            return Command::FAILURE;
+        }
+
+        $user = null;
+        if ($userId) {
+            $user = \App\Models\User::find($userId);
+        } elseif ($userEmail) {
+            $user = \App\Models\User::where('email', $userEmail)->first();
+        }
+
+        if (!$user) {
+            $this->error('User not found');
+            return Command::FAILURE;
+        }
 
         $expiresAt = null;
         if ($expiresDays) {
@@ -57,12 +78,13 @@ class CreateApiToken extends Command
         }
 
         try {
-            $apiToken = ApiToken::createToken($name, $description, $expiresAt, $validatedIps);
+            $apiToken = ApiToken::createForUser($user, $name, $description, $expiresAt, $validatedIps);
 
             $this->info('API Token created successfully!');
             $this->line('');
             $this->line('<fg=green>Token Details:</>');
             $this->line("Name: {$apiToken->name}");
+            $this->line("User: {$user->id} ({$user->email})");
             $this->line("Description: " . ($apiToken->description ?? 'N/A'));
             $this->line("Expires At: " . ($apiToken->expires_at ? $apiToken->expires_at->format('Y-m-d H:i:s') : 'Never'));
             $this->line("Allowed IPs: " . ($apiToken->allowed_ips ? implode(', ', $apiToken->allowed_ips) : 'Any IP'));

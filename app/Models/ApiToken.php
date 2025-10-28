@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class ApiToken extends Model
 {
     protected $fillable = [
+        'user_id',
         'name',
         'token',
         'description',
@@ -37,9 +38,10 @@ class ApiToken extends Model
     /**
      * Создать новый API токен
      */
-    public static function createToken(string $name, ?string $description = null, ?\DateTime $expiresAt = null, ?array $allowedIps = null): self
+    public static function createForUser(User $user, string $name, ?string $description = null, ?\DateTime $expiresAt = null, ?array $allowedIps = null): self
     {
         return self::create([
+            'user_id' => $user->id,
             'name' => $name,
             'token' => self::generateToken(),
             'description' => $description,
@@ -80,6 +82,14 @@ class ApiToken extends Model
         return self::where('token', $token)
             ->where('is_active', true)
             ->first();
+    }
+
+    /**
+     * Владелец токена (пользователь)
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**
